@@ -11,7 +11,7 @@ docker-python-apt:
     - {{ key }}: {{ value }}
     {% endfor %}
     - require:
-      - pkg: python-apt
+      - pkg: docker-python-apt
     - onlyif: dpkg --compare-versions {{ grains['kernelrelease'] }} lt 3.8
 {% endif %}
 
@@ -23,15 +23,26 @@ docker-dependencies-kernel:
     {% endfor %}
     - require_in:
       - pkg: lxc-docker
-    - onlyif: dpkg --compare-versions {{ grains['kernelrelease'] }} lt 3.8
+    - onlyif: dpkg --compare-versions {{ grains['kernelrelease'] }} lt 3.10
 {% endif %}
 
 docker-dependencies:
    pkg.installed:
     - pkgs:
+      - docker.io
       - iptables
       - ca-certificates
       - lxc
+{% if grains['os_family'] == 'Debian' %}
+      - apt-transport-https
+{% endif %}
+
+{% if not grains['osarch'].endswith('64') %}
+docker-only-support-64bit-platform:
+  test.fail_without_changes:
+    - require_in:
+      - pkg: lxc-docker
+{% endif %}
 
 docker-repo:
     pkgrepo.managed:
@@ -56,3 +67,5 @@ docker-service:
   service.running:
     - name: docker
     - enable: True
+  require:
+    - pkg: lxc-docker
